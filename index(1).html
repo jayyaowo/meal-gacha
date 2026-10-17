@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F3ECE0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="美食拉霸機">
+<title>美食拉霸機</title>
+<style>
+:root{
+  --bg:#F3ECE0;
+  --body:#4A4A48; --body-hi:#62625E; --body-lo:#333331;
+  --sage:#8A9A86; --clay:#B58B7C; --sand:#C9B79C;
+  --rim-hi:#B2BFAE; --rim:#8A9A86; --rim-lo:#6C7C68;
+  --reel-bg:#FFFFFF; --ink:#2B2B2A;
+  --lamp-on:#E8B04A;
+  --knob:#C0392B;
+  --item-h:clamp(60px,11dvh,88px);
+  --font:"PingFang TC","Noto Sans TC","Microsoft JhengHei","Heiti TC",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;background:var(--bg);font-family:var(--font);color:var(--ink);-webkit-text-size-adjust:100%}
+button,select{font-family:inherit}
+
+/* ===== Layout ===== */
+.app{
+  height:100vh;height:100dvh;overflow:hidden;
+  display:flex;flex-direction:column;
+  max-width:520px;margin:0 auto;
+  padding-top:env(safe-area-inset-top);
+  padding-left:env(safe-area-inset-left);
+  padding-right:env(safe-area-inset-right);
+}
+.topbar{flex:0 0 auto;display:flex;align-items:center;justify-content:center;height:40px;position:relative}
+.brand{font-size:16px;font-weight:700;letter-spacing:.4em;color:#6a5f50;padding-left:.4em}
+.badge{position:absolute;right:14px;font-size:11px;padding:3px 8px;border-radius:999px;background:var(--sand);color:#4b4132;box-shadow:inset 0 1px 2px rgba(0,0,0,.15)}
+.badge[hidden]{display:none}
+.machine{flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 6px}
+
+/* ===== Machine: outer frame (rim) + dark body + lever pillar ===== */
+.machine-frame{
+  width:100%;display:flex;align-items:stretch;
+  padding:9px 3px 9px 9px;border-radius:32px;
+  background:linear-gradient(145deg,var(--rim-hi),var(--rim) 45%,var(--rim-lo));
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.5),
+    inset 0 -3px 6px rgba(0,0,0,.28),
+    inset 3px 0 4px rgba(255,255,255,.12),
+    0 16px 24px -10px rgba(60,45,30,.55),
+    0 2px 5px rgba(60,45,30,.3);
+}
+.cabinet{
+  flex:1 1 0;min-width:0;padding:10px 8px 10px;border-radius:24px;
+  background:linear-gradient(180deg,var(--body-hi),var(--body) 22%,var(--body-lo));
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.55),inset 0 -1px 0 rgba(255,255,255,.08),0 1px 0 rgba(255,255,255,.35);
+}
+.pillar{flex:0 0 70px;display:flex;align-items:center;justify-content:center}
+
+/* marquee bulbs */
+.marquee{display:flex;justify-content:center;gap:16px;margin:2px 0 11px}
+.bulb{
+  width:14px;height:14px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#8d8d86,#4f4f4a);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.6),0 0 0 2px #262624,0 1px 0 2px rgba(255,255,255,.12);
+  transition:background .2s,box-shadow .2s;
+}
+body[data-phase="result"] .bulb{
+  background:radial-gradient(circle at 35% 30%,#fff6d6,#E8B04A 60%,#b57a1c);
+  box-shadow:inset 0 -1px 2px rgba(120,70,0,.5),0 0 0 2px #262624,0 0 12px 4px rgba(232,176,74,.65);
+}
+body[data-phase="spinning"] .bulb{animation:chase .75s steps(1) infinite}
+body[data-phase="spinning"] .bulb:nth-child(2){animation-delay:.15s}
+body[data-phase="spinning"] .bulb:nth-child(3){animation-delay:.3s}
+body[data-phase="spinning"] .bulb:nth-child(4){animation-delay:.45s}
+body[data-phase="spinning"] .bulb:nth-child(5){animation-delay:.6s}
+@keyframes chase{
+  0%,19.9%{
+    background:radial-gradient(circle at 35% 30%,#fff6d6,#E8B04A 60%,#b57a1c);
+    box-shadow:inset 0 -1px 2px rgba(120,70,0,.5),0 0 0 2px #262624,0 0 12px 4px rgba(232,176,74,.65);
+  }
+  20%,100%{
+    background:radial-gradient(circle at 35% 30%,#8d8d86,#4f4f4a);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.6),0 0 0 2px #262624,0 1px 0 2px rgba(255,255,255,.12);
+  }
+}
+
+/* ===== Reel ===== */
+.reel-frame{
+  padding:5px;border-radius:22px;
+  background:linear-gradient(180deg,#1f1f1d,#3a3a38);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.16);
+}
+.reel-frame.shake{animation:shake .42s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{
+  10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}
+  30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}
+}
+.reel-window{position:relative;height:var(--item-h);overflow:hidden;border-radius:17px;background:var(--reel-bg)}
+/* cylinder shading: strong while rolling, softer at rest */
+.reel-window::after{
+  content:"";position:absolute;inset:0;z-index:2;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(180deg,
+    rgba(20,20,18,.62) 0%,rgba(20,20,18,.28) 14%,rgba(20,20,18,.07) 28%,
+    rgba(255,255,255,0) 40%,rgba(255,255,255,0) 60%,
+    rgba(20,20,18,.07) 72%,rgba(20,20,18,.28) 86%,rgba(20,20,18,.62) 100%);
+  box-shadow:inset 0 12px 12px -8px rgba(0,0,0,.5),inset 0 -12px 12px -8px rgba(0,0,0,.5),inset 0 0 0 1px rgba(0,0,0,.08);
+  opacity:.5;transition:opacity .45s ease;
+}
+.reel-window.rolling::after{opacity:1}
+/* speed streaks */
+.reel-window::before{
+  content:"";position:absolute;inset:0;z-index:1;border-radius:inherit;pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(0,0,0,.11) 0 3px,rgba(255,255,255,0) 3px 11px);
+  opacity:0;transition:opacity .35s ease;
+  animation:streak .09s linear infinite;animation-play-state:paused;
+}
+.reel-window.streak::before{opacity:1;animation-play-state:running}
+@keyframes streak{to{background-position:0 11px}}
+
+.reel-strip{display:flex;flex-direction:column}
+.reel-strip.spinning{will-change:transform,filter}
+.reel-item{
+  flex:0 0 var(--item-h);height:var(--item-h);display:flex;align-items:center;justify-content:center;
+  padding:0 16px;text-align:center;font-weight:700;line-height:1.2;
+  font-size:clamp(18px,5.4vw,27px);color:var(--ink);
+}
+.reel-item span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+
+/* ===== Lever (slot cut into the frame, knob travels on an arc) ===== */
+.lever{
+  position:relative;width:70px;height:124px;padding:0;border:0;background:none;cursor:grab;
+  touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+}
+.lever:disabled{cursor:default}
+.lever:focus-visible{outline:2px solid var(--lamp-on);outline-offset:2px;border-radius:24px}
+.lever::before{
+  content:"";position:absolute;inset:0;border-radius:24px;
+  background:linear-gradient(180deg,rgba(0,0,0,.12),rgba(255,255,255,.08));
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.4);
+}
+.lever-slot{position:absolute;inset:0;pointer-events:none}
+.lever-hub{
+  position:absolute;left:-6px;top:51px;width:22px;height:22px;border-radius:50%;z-index:3;pointer-events:none;
+  background:radial-gradient(circle at 35% 30%,#f2f2f2,#9b9b9b 55%,#5e5e5e);
+  box-shadow:0 2px 4px rgba(0,0,0,.5),inset 0 -1px 2px rgba(0,0,0,.4);
+}
+.lever-arm{position:absolute;left:5px;top:62px;width:0;height:0;transform-origin:0 0;transform:rotate(-52deg);z-index:2;pointer-events:none}
+.lever-rod{
+  position:absolute;left:0;top:-4px;width:50px;height:8px;border-radius:4px;
+  background:linear-gradient(180deg,#f0f0f0,#a5a5a5 55%,#6e6e6e);
+  box-shadow:0 2px 3px rgba(0,0,0,.45);
+}
+.lever-knob{
+  position:absolute;left:50px;top:0;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#ff9d8d 0,var(--knob) 42%,#7d1d14 100%);
+  box-shadow:0 4px 6px rgba(0,0,0,.5),inset 0 -2px 4px rgba(0,0,0,.35);
+  transform:rotate(52deg);
+}
+
+/* ===== Result tray ===== */
+.result-bar{
+  margin-top:9px;padding:7px 8px;min-height:74px;border-radius:16px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  background:rgba(0,0,0,.28);box-shadow:inset 0 2px 5px rgba(0,0,0,.5),0 1px 0 rgba(255,255,255,.08);
+}
+.meta{min-height:18px;font-size:13px;color:#D9CFBD;letter-spacing:.06em;text-align:center}
+.actions{min-height:44px;display:flex;align-items:center}
+.map-btn,.retry-btn{
+  display:none;align-items:center;justify-content:center;min-height:44px;padding:0 22px;border-radius:12px;
+  font-size:14px;font-weight:700;letter-spacing:.08em;text-decoration:none;color:#3b3226;border:0;cursor:pointer;
+  background:linear-gradient(180deg,#E3D3B6,var(--sand));
+  box-shadow:0 3px 0 #8f7f66,0 5px 8px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.5);
+  -webkit-tap-highlight-color:transparent;
+}
+.map-btn:active,.retry-btn:active{transform:translateY(3px);box-shadow:0 0 0 #8f7f66,inset 0 2px 4px rgba(0,0,0,.3)}
+.map-btn.show,.retry-btn.show{display:inline-flex}
+
+/* ===== Control panel ===== */
+.panel{flex:0 0 auto;padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+.selects{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+select{
+  -webkit-appearance:none;appearance:none;width:100%;min-width:0;height:46px;padding:0 34px 0 14px;
+  border-radius:12px;border:1px solid #b6a78f;color:var(--ink);font-size:15px;font-weight:600;
+  background-color:#FBF7EF;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' fill='none' stroke='%234A4A48' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat:no-repeat;background-position:right 13px center;
+  box-shadow:inset 0 2px 3px rgba(0,0,0,.12),0 1px 0 #fff;
+  text-overflow:ellipsis;
+}
+select:disabled{opacity:.5}
+select:focus-visible{outline:2px solid var(--clay);outline-offset:1px}
+
+.keys-wrap{margin-top:10px;position:relative}
+.keys-wrap:not(.at-end){-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent)}
+.keys{
+  display:grid;grid-template-rows:repeat(2,44px);grid-auto-flow:column;grid-auto-columns:max-content;gap:8px;
+  overflow-x:auto;overflow-y:hidden;padding:2px 4px 6px;
+  scrollbar-width:none;scroll-snap-type:x proximity;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+}
+.keys::-webkit-scrollbar{display:none}
+.key{
+  position:relative;scroll-snap-align:start;white-space:nowrap;min-height:44px;padding:0 16px 0 30px;
+  border:0;border-radius:11px;font-size:14px;font-weight:700;color:#3d362c;cursor:pointer;
+  background:linear-gradient(180deg,#EFE7D8,#D8CCB6);
+  box-shadow:0 3px 0 #9d8f77,0 5px 7px rgba(60,45,30,.28),inset 0 1px 0 rgba(255,255,255,.7);
+  transition:transform 150ms ease,box-shadow 150ms ease,background 150ms ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.key::before{
+  content:"";position:absolute;left:12px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;
+  background:#6B6B66;box-shadow:inset 0 1px 2px rgba(0,0,0,.55);
+  transition:background 150ms ease,box-shadow 150ms ease;
+}
+.key[aria-pressed="true"]{
+  transform:translateY(3px);
+  background:linear-gradient(180deg,#CBBFA9,#D6CAB4);
+  box-shadow:0 0 0 #9d8f77,inset 0 3px 6px rgba(60,45,30,.4);
+}
+.key[aria-pressed="true"]::before{background:var(--lamp-on);box-shadow:0 0 8px 2px rgba(232,176,74,.75),inset 0 -1px 2px rgba(150,90,0,.5)}
+.key:disabled{opacity:.55;cursor:default}
+.key:focus-visible{outline:2px solid var(--clay);outline-offset:2px}
+
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+@media (max-height:600px){
+  :root{--item-h:56px}
+  .topbar{height:32px}
+  .marquee{margin-bottom:7px}
+  .result-bar{min-height:64px;margin-top:6px;gap:4px;padding:5px 8px}
+  .cabinet{padding:8px 8px}
+  .panel{padding-top:6px}
+  .keys-wrap{margin-top:6px}
+}
+@media (prefers-reduced-motion:reduce){
+  .key,.key::before{transition-duration:1ms}
+  body[data-phase="spinning"] .bulb{animation:none}
+  .reel-window::before{animation:none}
+  .reel-frame.shake{animation:flash .3s linear 1}
+  @keyframes flash{50%{box-shadow:inset 0 0 0 3px var(--clay)}}
+}
+</style>
+</head>
+<body data-phase="loading">
+<div class="app">
+  <header class="topbar">
+    <span class="brand">美食拉霸機</span>
+    <span class="badge" id="badge" hidden>離線快取</span>
+  </header>
+
+  <main class="machine">
+    <div class="machine-frame">
+      <div class="cabinet">
+        <div class="marquee" aria-hidden="true"><i class="bulb"></i><i class="bulb"></i><i class="bulb"></i><i class="bulb"></i><i class="bulb"></i></div>
+        <div class="reel-frame" id="reelFrame">
+          <div class="reel-window" id="reelWin" aria-hidden="true"><div class="reel-strip" id="strip"></div></div>
+        </div>
+        <div class="result-bar">
+          <div class="meta" id="meta"></div>
+          <div class="actions">
+            <a class="map-btn" id="mapBtn" target="_blank" rel="noopener noreferrer">開啟 Google 地圖</a>
+            <button type="button" class="retry-btn" id="retryBtn">重試</button>
+          </div>
+        </div>
+      </div>
+      <div class="pillar">
+        <button type="button" class="lever" id="lever" aria-label="拉下拉桿抽餐廳" disabled>
+          <svg class="lever-slot" viewBox="0 0 70 124" width="70" height="124" aria-hidden="true">
+            <path d="M31.5 19.6A50 50 0 0 1 31.5 104.4" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="26" stroke-linecap="round" transform="translate(0 1.4)"/>
+            <path d="M31.5 19.6A50 50 0 0 1 31.5 104.4" fill="none" stroke="#0c0c0b" stroke-width="22" stroke-linecap="round"/>
+            <path d="M31.5 19.6A50 50 0 0 1 31.5 104.4" fill="none" stroke="rgba(0,0,0,.65)" stroke-width="14" stroke-linecap="round" transform="translate(1.5 0)"/>
+          </svg>
+          <span class="lever-hub" id="leverHub"></span>
+          <span class="lever-arm" id="leverArm"><span class="lever-rod"></span><span class="lever-knob" id="leverKnob"></span></span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <section class="panel">
+    <div class="selects">
+      <select id="citySel" aria-label="縣市" disabled><option value="">全部縣市</option></select>
+      <select id="areaSel" aria-label="區域" disabled><option value="">全部區域</option></select>
+    </div>
+    <div class="keys-wrap" id="keysWrap"><div class="keys" id="keys" role="group" aria-label="餐廳種類（可複選）"></div></div>
+  </section>
+</div>
+<div class="sr" id="sr" aria-live="polite" role="status"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= Config ================= */
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTlZJJU7S2ZA5Ivv-2WtaW-bzLWiuUjDux7YQNhfOjmQd_vX5kmKajkhKa6T9102cAmGUERqfdIaiea/pub?gid=447110991&single=true&output=csv";
+const CACHE_KEY = "retro-food-cache-v1";
+const FETCH_TIMEOUT_MS = 8000;
+const MAX_CATEGORY_BUTTONS = 30;
+const SPIN_DURATION_MS = 2500;
+const FILLER_MIN = 10, FILLER_MAX = 15;
+const LOOP_ITERATIONS = 2, LOOP_ITER_MS = 500;
+const DECEL_ITEMS = 4, DECEL_MS = 1200, SNAP_MS = 300;
+const DECIDE_AT_MS = 700;
+const OVERSHOOT = 0.12;
+const EASE_SPIN = 'cubic-bezier(.12,.75,.2,1)';
+const EASE_SNAP = 'cubic-bezier(.34,1.56,.64,1)';
+const PLACEHOLDER_VALUES = new Set(['待確認']);
+const LEVER_REST = -52, LEVER_PULL = 52, LEVER_THRESH = 0.8;
+
+/* ================= DOM ================= */
+const $ = id => document.getElementById(id);
+const el = {
+  frame:$('reelFrame'), win:$('reelWin'), strip:$('strip'), lever:$('lever'), meta:$('meta'),
+  mapBtn:$('mapBtn'), retryBtn:$('retryBtn'), city:$('citySel'), area:$('areaSel'),
+  keys:$('keys'), keysWrap:$('keysWrap'), badge:$('badge'), sr:$('sr'),
+  hub:$('leverHub'), arm:$('leverArm'), knob:$('leverKnob'),
+};
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+/* ================= State ================= */
+const state = {
+  phase:'loading', rows:[], source:'network',
+  city:'', area:'', categories:new Set(), categoryList:[],
+  lastKey:null, current:null,
+  runId:0, anims:[], timers:[], winner:null, pool:[],
+};
+
+/* ================= CSV ================= */
+function parseCsv(text){
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const rows = []; let row = [], field = '', inQ = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (inQ){
+      if (c === '"'){ if (text[i+1] === '"'){ field += '"'; i++; } else inQ = false; }
+      else field += c;
+    } else if (c === '"'){
+      if (field === '') inQ = true; else field += c;
+    } else if (c === ','){ row.push(field); field = ''; }
+    else if (c === '\n' || c === '\r'){
+      if (c === '\r' && text[i+1] === '\n') i++;
+      row.push(field); field = ''; rows.push(row); row = [];
+    } else field += c;
+  }
+  if (field !== '' || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(f => f.trim() !== ''));
+}
+const clean = s => (s ?? '').replace(/\s+/g, ' ').trim();
+function toRestaurants(table){
+  if (!table.length) throw new Error('empty table');
+  const head = table[0].map(h => h.trim().toLowerCase());
+  const idx = {}; ['name','city','area','category'].forEach(k => idx[k] = head.indexOf(k));
+  if (idx.name < 0) throw new Error('missing name column');
+  const seen = new Set(), out = [];
+  for (let i = 1; i < table.length; i++){
+    const r = table[i];
+    const get = k => idx[k] < 0 ? '' : clean(r[idx[k]]);
+    const o = { name:get('name'), city:get('city'), area:get('area'), category:get('category') };
+    if (!o.name) continue;
+    if (PLACEHOLDER_VALUES.has(o.city)) o.city = '';
+    if (PLACEHOLDER_VALUES.has(o.area)) o.area = '';
+    const k = keyOf(o);
+    if (seen.has(k)) continue;
+    seen.add(k); out.push(o);
+  }
+  return out;
+}
+const keyOf = r => `${r.name}|${r.city}|${r.area}`;
+function displayName(r){
+  if (r._d) return r._d;
+  let n = r.name.replace(/^[\s\-–—]+/, '');
+  const m = n.search(/[#｜|（(]/);
+  if (m >= 2) n = n.slice(0, m).trim();
+  return (r._d = n || r.name);
+}
+
+/* ================= Data loading + cache ================= */
+function cacheWrite(rows){
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts:Date.now(), rows })); } catch {}
+}
+function cacheRead(){
+  try {
+    const p = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+    if (p && Array.isArray(p.rows) && p.rows.length && typeof p.rows[0].name === 'string') return p.rows;
+  } catch {}
+  return null;
+}
+async function loadData(){
+  let reason = 'network';
+  try {
+    // 不傳 AbortSignal：部分預覽/沙盒環境會用 postMessage 轉送 fetch 參數，signal 無法被複製而報錯
+    let t;
+    const timeout = new Promise((_, rej) => { t = setTimeout(() => rej(new Error('timeout')), FETCH_TIMEOUT_MS); });
+    let text;
+    try {
+      text = await Promise.race([
+        fetch(CSV_URL, { cache:'no-store' }).then(r => {
+          if (!r.ok) throw new Error('http ' + r.status);
+          return r.text();
+        }),
+        timeout,
+      ]);
+    } finally { clearTimeout(t); }
+    let rows;
+    try { rows = toRestaurants(parseCsv(text)); } catch (e){ reason = 'parse'; throw e; }
+    if (!rows.length){ reason = 'empty'; throw new Error('no rows'); }
+    cacheWrite(rows);
+    return { ok:true, rows, source:'network' };
+  } catch (e){
+    console.warn('[load failed]', reason, e);
+    const cached = cacheRead();
+    if (cached) return { ok:true, rows:cached, source:'cache' };
+    return { ok:false, reason, detail:String(e && e.message || e) };
+  }
+}
+
+/* ================= Data audit (console only) ================= */
+const DISTRICTS = {
+  '台北市':['中正區','大同區','中山區','松山區','大安區','萬華區','信義區','士林區','北投區','內湖區','南港區','文山區'],
+  '新北市':['板橋區','三重區','中和區','永和區','新莊區','新店區','土城區','蘆洲區','汐止區','樹林區','鶯歌區','三峽區','淡水區','五股區','泰山區','林口區','八里區','深坑區','石碇區','坪林區','三芝區','石門區','金山區','萬里區','平溪區','雙溪區','貢寮區','瑞芳區','烏來區'],
+  '基隆市':['仁愛區','中正區','信義區','中山區','安樂區','暖暖區','七堵區'],
+};
+function auditData(rows){
+  const bad = [];
+  rows.forEach(r => {
+    const list = DISTRICTS[r.city];
+    if (list && r.area && !list.includes(r.area)){
+      const owner = Object.keys(DISTRICTS).find(c => DISTRICTS[c].includes(r.area) && c !== r.city);
+      bad.push({ name:r.name, city:r.city, area:r.area, 疑似:owner ? '區域屬於 ' + owner : '非正式行政區名稱' });
+    }
+  });
+  if (bad.length){ console.warn(`[audit] ${bad.length} 筆縣市/區域對不上`); console.table(bad); }
+  else console.log('[audit] 縣市/區域皆吻合');
+}
+
+/* ================= Filters / Picker ================= */
+function getPool(){
+  const { city, area, categories, rows } = state;
+  return rows.filter(r =>
+    (!city || r.city === city) &&
+    (!area || r.area === area) &&
+    (categories.size === 0 || categories.has(r.category)));
+}
+const rand = n => Math.floor(Math.random() * n);
+function pick(pool){
+  if (pool.length === 1) return pool[0];
+  const cand = pool.filter(r => keyOf(r) !== state.lastKey);
+  const src = cand.length ? cand : pool;
+  return src[rand(src.length)];
+}
+function sample(arr, k){
+  const a = arr.slice();
+  for (let i = 0; i < k; i++){ const j = i + rand(a.length - i); [a[i], a[j]] = [a[j], a[i]]; }
+  return a.slice(0, k);
+}
+function buildFillers(pool){
+  const n = pool.length;
+  const K = Math.min(FILLER_MAX, Math.max(FILLER_MIN, n));
+  if (n >= K) return sample(pool, K);        // distinct
+  if (n === 1) return Array(K).fill(pool[0]);
+  if (n === 2){ const [a, b] = sample(pool, 2); return Array.from({length:K}, (_, i) => i % 2 ? b : a); }
+  const out = [];
+  for (let i = 0; i < K; i++){
+    const avoid = [out[i-1], i === K - 1 ? out[0] : null].filter(Boolean);
+    const cand = pool.filter(r => !avoid.includes(r));
+    out.push(cand[rand(cand.length)]);
+  }
+  return out;
+}
+function pickOther(list, avoid){
+  const cand = list.filter(r => !avoid.some(a => keyOf(a) === keyOf(r)));
+  return cand.length ? cand[rand(cand.length)] : list[0];
+}
+
+/* ================= Reel rendering ================= */
+function makeItem(text){
+  const d = document.createElement('div'); d.className = 'reel-item';
+  const s = document.createElement('span'); s.textContent = text; d.appendChild(s);
+  return d;
+}
+function setStrip(texts){ el.strip.replaceChildren(...texts.map(makeItem)); }
+function showText(text){ el.strip.getAnimations().forEach(a => a.cancel()); el.strip.style.transform = ''; el.strip.style.filter = ''; setStrip([text]); }
+function srSay(t){ el.sr.textContent = ''; setTimeout(() => { el.sr.textContent = t; }, 30); }
+
+function clearResult(){
+  el.meta.textContent = '';
+  el.mapBtn.classList.remove('show'); el.mapBtn.removeAttribute('href');
+}
+function renderResult(r){
+  el.meta.textContent = [r.city, r.area, r.category].filter(Boolean).join(' · ');
+  const q = encodeURIComponent(`${displayName(r)} ${r.city}${r.area}`.trim());
+  el.mapBtn.href = `https://www.google.com/maps/search/?api=1&query=${q}`;
+  el.mapBtn.classList.add('show');
+}
+
+function applyPhase(){
+  const p = state.phase;
+  document.body.dataset.phase = p;
+  const lock = p === 'loading' || p === 'spinning';
+  const off = lock || p === 'error';
+  el.lever.disabled = off;
+  el.city.disabled = off;
+  el.area.disabled = off || !state.city;
+  el.keys.querySelectorAll('.key').forEach(b => b.disabled = off);
+}
+
+/* ================= Spin ================= */
+function showEmpty(){
+  showText('查無餐廳');
+  state.phase = 'empty'; state.current = null;
+  clearResult(); applyPhase(); srSay('查無餐廳');
+  el.frame.classList.remove('shake'); void el.frame.offsetWidth; el.frame.classList.add('shake');
+  navigator.vibrate?.([30, 40, 30]);
+}
+el.frame.addEventListener('animationend', () => el.frame.classList.remove('shake'));
+
+function finalize(runId){
+  if (runId !== state.runId || state.phase !== 'spinning') return;
+  state.timers.forEach(clearTimeout); state.timers = [];
+  state.anims.forEach(a => { try { a.cancel(); } catch {} }); state.anims = [];
+  if (!state.winner) state.winner = pick(state.pool);
+  const w = state.winner;
+  el.strip.classList.remove('spinning');
+  el.win.classList.remove('rolling', 'streak');
+  showText(displayName(w));
+  state.phase = 'result'; state.current = w; state.lastKey = keyOf(w);
+  renderResult(w); applyPhase(); srSay('抽中：' + w.name);
+  navigator.vibrate?.(15);
+}
+
+async function spin(){
+  if (!['idle', 'result', 'empty'].includes(state.phase)) return;
+  const pool = getPool();
+  if (!pool.length){ showEmpty(); return; }
+
+  const runId = ++state.runId;
+  state.phase = 'spinning'; state.pool = pool; state.winner = null;
+  clearResult(); applyPhase();
+
+  if (REDUCED.matches){
+    state.winner = pick(pool);
+    el.strip.classList.add('spinning');
+    finalize(runId);
+    el.strip.animate([{opacity:0},{opacity:1}], {duration:150});
+    return;
+  }
+
+  const H = el.win.clientHeight;
+  const alive = () => runId === state.runId && state.phase === 'spinning';
+  const track = a => (state.anims.push(a), a);
+  const done = a => a.finished.then(() => true, () => false);
+
+  // Phase A: infinite loop (2 laps, linear)
+  const fillers = buildFillers(pool), K = fillers.length;
+  setStrip(fillers.concat(fillers).map(displayName));
+  el.strip.classList.add('spinning');
+  el.win.classList.add('rolling', 'streak');
+  state.timers.push(setTimeout(() => { if (alive() && !state.winner) state.winner = pick(pool); }, DECIDE_AT_MS));
+  state.timers.push(setTimeout(() => finalize(runId), SPIN_DURATION_MS + 400));
+  const aMove = track(el.strip.animate(
+    [{transform:`translateY(${-K*H}px)`}, {transform:'translateY(0px)'}],
+    {duration:LOOP_ITER_MS, iterations:LOOP_ITERATIONS, easing:'linear', fill:'forwards'}));
+  track(el.strip.animate([{filter:'blur(0px)'}, {filter:'blur(3px)'}], {duration:150, easing:'ease-out', fill:'forwards'}));
+  if (!(await done(aMove)) || !alive()) return;
+
+  // Phase A -> B: winner enters the DOM only now, as the last node of the strip
+  if (!state.winner) state.winner = pick(pool);
+  const w = state.winner, m = DECEL_ITEMS;
+  const ghosts = []; let prev = w;
+  for (let i = 0; i < m; i++){
+    const avoid = [prev]; if (i === m - 1) avoid.push(fillers[0]);
+    const g = pickOther(fillers, avoid); ghosts.push(g); prev = g;
+  }
+  const seq = [w, ...ghosts, fillers[0]];       // top -> bottom; view starts on fillers[0]
+  state.anims.forEach(a => a.cancel()); state.anims = [];
+  setStrip(seq.map(displayName));
+
+  // Phase B: decelerate with overshoot, blur fades out
+  const bMove = track(el.strip.animate(
+    [{transform:`translateY(${-(m+1)*H}px)`}, {transform:`translateY(${OVERSHOOT*H}px)`}],
+    {duration:DECEL_MS, easing:EASE_SPIN, fill:'forwards'}));
+  track(el.strip.animate([{filter:'blur(3px)'}, {filter:'blur(0px)'}], {duration:800, easing:'ease-out', fill:'forwards'}));
+  state.timers.push(setTimeout(() => el.win.classList.remove('streak'), 450));
+  if (!(await done(bMove)) || !alive()) return;
+
+  // Phase C: detent snap-back
+  const cMove = track(el.strip.animate(
+    [{transform:`translateY(${OVERSHOOT*H}px)`}, {transform:'translateY(0px)'}],
+    {duration:SNAP_MS, easing:EASE_SNAP, fill:'forwards'}));
+  if (!(await done(cMove)) || !alive()) return;
+  finalize(runId);
+}
+
+/* ================= Lever: arc motion, drag or tap ================= */
+const prog = a => (a - LEVER_REST) / (LEVER_PULL - LEVER_REST);
+const kTf = a => `rotate(${-a}deg) scale(${1 + 0.14 * prog(a)})`;
+let leverAngle = LEVER_REST, leverAnims = [], drag = null, armed = false, keyDown = false;
+
+function setAngle(a){
+  leverAngle = a;
+  el.arm.style.transform = `rotate(${a}deg)`;
+  el.knob.style.transform = kTf(a);
+}
+function cancelLeverAnims(){ leverAnims.forEach(x => { try { x.cancel(); } catch {} }); leverAnims = []; }
+function animateAngles(frames, duration, easing){
+  cancelLeverAnims();
+  const mk = (tf) => frames.map(f => {
+    const o = { transform: tf(f.a) };
+    if (f.offset !== undefined) o.offset = f.offset;
+    if (f.easing) o.easing = f.easing;
+    return o;
+  });
+  const opts = { duration: REDUCED.matches ? 1 : duration, easing: easing || 'linear', fill: 'forwards' };
+  const a1 = el.arm.animate(mk(a => `rotate(${a}deg)`), opts);
+  const a2 = el.knob.animate(mk(kTf), opts);
+  leverAnims = [a1, a2];
+  const last = frames[frames.length - 1].a;
+  return Promise.all([a1.finished, a2.finished]).then(() => {
+    if (leverAnims[0] !== a1) return false;      // superseded
+    setAngle(last); cancelLeverAnims(); return true;
+  }, () => false);
+}
+function springBack(){
+  const from = leverAngle;
+  return animateAngles([
+    { a: from, easing: 'ease-in' },
+    { a: LEVER_REST - 9, offset: .42, easing: 'ease-out' },
+    { a: LEVER_REST + 5, offset: .72, easing: 'ease-in-out' },
+    { a: LEVER_REST },
+  ], 650);
+}
+function fire(){
+  spin();                 // starts reel immediately; lever springs back in parallel
+  springBack();
+}
+async function autoPull(){
+  const ok = await animateAngles([{ a: leverAngle }, { a: LEVER_PULL }], 150, 'ease-in');
+  if (ok) { navigator.vibrate?.(14); fire(); }
+}
+function pointerAngle(e){
+  const r = el.hub.getBoundingClientRect();
+  const deg = Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
+  return Math.max(LEVER_REST, Math.min(LEVER_PULL, deg));
+}
+el.lever.addEventListener('pointerdown', e => {
+  if (el.lever.disabled || drag) return;
+  cancelLeverAnims();
+  drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false };
+  armed = false;
+  try { el.lever.setPointerCapture(e.pointerId); } catch {}
+});
+el.lever.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  if (!drag.moved && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
+  drag.moved = true;
+  setAngle(pointerAngle(e));
+  const p = prog(leverAngle);
+  if (!armed && p >= LEVER_THRESH){ armed = true; navigator.vibrate?.(12); }
+  else if (armed && p < LEVER_THRESH - 0.1) armed = false;
+});
+el.lever.addEventListener('pointerup', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const d = drag; drag = null;
+  if (!d.moved) autoPull();
+  else if (prog(leverAngle) >= LEVER_THRESH) { navigator.vibrate?.(14); fire(); }
+  else springBack();
+});
+el.lever.addEventListener('pointercancel', () => { if (!drag) return; drag = null; springBack(); });
+el.lever.addEventListener('click', e => e.preventDefault());
+el.lever.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); if (!e.repeat && !el.lever.disabled) keyDown = true; }
+});
+el.lever.addEventListener('keyup', e => {
+  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); if (keyDown){ keyDown = false; autoPull(); } }
+});
+setAngle(LEVER_REST);
+
+/* ================= Filter UI ================= */
+function fillSelect(sel, allLabel, values, current){
+  const frag = document.createDocumentFragment();
+  const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; frag.appendChild(o); };
+  add('', allLabel); values.forEach(v => add(v, v));
+  sel.replaceChildren(frag); sel.value = current;
+}
+const uniqSorted = arr => [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+function renderCity(){ fillSelect(el.city, '全部縣市', uniqSorted(state.rows.map(r => r.city)), state.city); }
+function renderArea(){
+  const areas = state.city ? uniqSorted(state.rows.filter(r => r.city === state.city).map(r => r.area)) : [];
+  fillSelect(el.area, '全部區域', areas, state.area);
+  el.area.disabled = !state.city || state.phase === 'loading' || state.phase === 'spinning' || state.phase === 'error';
+}
+el.city.addEventListener('change', () => { state.city = el.city.value; state.area = ''; renderArea(); });
+el.area.addEventListener('change', () => { state.area = el.area.value; });
+
+function buildCategoryList(){
+  const cnt = new Map();
+  state.rows.forEach(r => { if (r.category) cnt.set(r.category, (cnt.get(r.category) || 0) + 1); });
+  state.categoryList = [...cnt.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hant'))
+    .slice(0, MAX_CATEGORY_BUTTONS).map(e => e[0]);
+  state.categories = new Set();
+}
+function renderKeys(){
+  const frag = document.createDocumentFragment();
+  state.categoryList.forEach(c => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'key'; b.textContent = c; b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => {
+      const on = !state.categories.has(c);
+      on ? state.categories.add(c) : state.categories.delete(c);
+      b.setAttribute('aria-pressed', String(on));
+      navigator.vibrate?.(8);
+    });
+    frag.appendChild(b);
+  });
+  el.keys.replaceChildren(frag);
+  el.keys.scrollLeft = 0; updateKeysMask();
+}
+function updateKeysMask(){
+  const k = el.keys;
+  el.keysWrap.classList.toggle('at-end', k.scrollLeft + k.clientWidth >= k.scrollWidth - 4);
+}
+el.keys.addEventListener('scroll', updateKeysMask, { passive:true });
+window.addEventListener('resize', updateKeysMask);
+
+/* ================= Boot ================= */
+async function load(){
+  state.phase = 'loading'; applyPhase();
+  showText('裝載中…'); clearResult();
+  el.retryBtn.classList.remove('show'); el.badge.hidden = true;
+  const res = await loadData();
+  if (res.ok){
+    state.rows = res.rows; state.source = res.source;
+    state.city = ''; state.area = '';
+    auditData(res.rows);
+    buildCategoryList(); renderCity(); renderArea(); renderKeys();
+    el.badge.hidden = res.source !== 'cache';
+    state.phase = 'idle'; showText('？？？'); applyPhase();
+  } else {
+    state.phase = 'error'; showText('載入失敗'); applyPhase();
+    el.meta.textContent = `${res.reason}：${(res.detail || '').slice(0, 60)}`;
+    el.retryBtn.classList.add('show');
+  }
+}
+el.retryBtn.addEventListener('click', load);
+
+/* ================= Self test (console) ================= */
+function selfTest(){
+  const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const t = [
+    eq(parseCsv('a,b\n1,2'), [['a','b'],['1','2']]),
+    eq(parseCsv('a,b\n"x,y",2'), [['a','b'],['x,y','2']]),
+    eq(parseCsv('a,b\n"x\ny",2'), [['a','b'],['x\ny','2']]),
+    eq(parseCsv('a,b\r\n1,2\r\n'), [['a','b'],['1','2']]),
+    eq(parseCsv('﻿a,b\n1,2'), [['a','b'],['1','2']]),
+    eq(parseCsv('a,b\n"he said ""hi""",1'), [['a','b'],['he said "hi"','1']]),
+  ];
+  const fillerOk = [1, 2, 5, 10, 50].every(n => {
+    const pool = Array.from({length:n}, (_, i) => ({ name:'n' + i, city:'', area:'', category:'' }));
+    for (let k = 0; k < 100; k++){
+      const f = buildFillers(pool);
+      if (f.length < FILLER_MIN || f.length > FILLER_MAX) return false;
+      if (n >= 2) for (let i = 0; i < f.length; i++) if (f[i] === f[(i + 1) % f.length]) return false;
+    }
+    return true;
+  });
+  console.log(`[selfTest] csv ${t.filter(Boolean).length}/${t.length}, fillers ${fillerOk ? 'ok' : 'FAIL'}`);
+}
+
+selfTest();
+load();
+})();
+</script>
+</body>
+</html>
