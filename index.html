@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F3ECE0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="復古美食機">
+<title>復古美食機</title>
+<style>
+:root{
+  --bg:#F3ECE0;
+  --body:#4A4A48; --body-hi:#62625E; --body-lo:#333331;
+  --sage:#8A9A86; --clay:#B58B7C; --sand:#C9B79C;
+  --reel-bg:#FFFFFF; --ink:#2B2B2A;
+  --lamp-off:#6B6B66; --lamp-on:#E8B04A;
+  --knob:#C0392B;
+  --item-h:clamp(60px,11dvh,88px);
+  --ease-spin:cubic-bezier(.12,.75,.2,1);
+  --ease-snap:cubic-bezier(.34,1.56,.64,1);
+  --font:"PingFang TC","Noto Sans TC","Microsoft JhengHei","Heiti TC",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;background:var(--bg);font-family:var(--font);color:var(--ink);-webkit-text-size-adjust:100%}
+button,select{font-family:inherit}
+
+/* ===== Layout ===== */
+.app{
+  height:100vh;height:100dvh;overflow:hidden;
+  display:flex;flex-direction:column;
+  max-width:520px;margin:0 auto;
+  padding-top:env(safe-area-inset-top);
+  padding-left:env(safe-area-inset-left);
+  padding-right:env(safe-area-inset-right);
+}
+.topbar{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;height:40px;position:relative}
+.brand{font-size:15px;font-weight:700;letter-spacing:.4em;color:#6a5f50;padding-left:.4em}
+.badge{position:absolute;right:14px;font-size:11px;padding:3px 8px;border-radius:999px;background:var(--sand);color:#4b4132;box-shadow:inset 0 1px 2px rgba(0,0,0,.15)}
+.badge[hidden]{display:none}
+.machine{flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 14px}
+
+/* ===== Cabinet ===== */
+.cabinet{
+  width:100%;
+  background:linear-gradient(180deg,var(--body-hi),var(--body) 20%,var(--body-lo));
+  border-radius:26px;padding:12px 14px 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    inset 0 -3px 6px rgba(0,0,0,.35),
+    0 12px 20px -8px rgba(60,45,30,.5),
+    0 2px 4px rgba(60,45,30,.25);
+}
+.plate{display:flex;align-items:center;justify-content:space-between;margin:0 6px 10px;color:#E6DDCC;font-size:12px;letter-spacing:.35em}
+.lamps{display:flex;gap:7px}
+.lamp{width:9px;height:9px;border-radius:50%;background:var(--lamp-off);box-shadow:inset 0 1px 2px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.12)}
+.lamp:nth-child(1){--c:var(--sage)}.lamp:nth-child(2){--c:var(--lamp-on)}.lamp:nth-child(3){--c:var(--clay)}
+body[data-phase="spinning"] .lamp{background:var(--c);box-shadow:0 0 8px var(--c);animation:blink .36s steps(1) infinite}
+body[data-phase="spinning"] .lamp:nth-child(2){animation-delay:.12s}
+body[data-phase="spinning"] .lamp:nth-child(3){animation-delay:.24s}
+@keyframes blink{50%{background:var(--lamp-off);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}}
+
+.reel-row{display:flex;align-items:center;gap:8px}
+.reel-frame{
+  flex:1 1 0;min-width:0;padding:6px;border-radius:30px;
+  background:linear-gradient(180deg,#242422,#3a3a38);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.65),0 1px 0 rgba(255,255,255,.14);
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.3));
+}
+.reel-frame.shake{animation:shake .42s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{
+  10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}
+  30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}
+}
+.reel-window{position:relative;height:var(--item-h);overflow:hidden;border-radius:24px;background:var(--reel-bg)}
+.reel-window::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  box-shadow:
+    inset 0 16px 14px -10px rgba(0,0,0,.38),
+    inset 0 -16px 14px -10px rgba(0,0,0,.38),
+    inset 0 0 0 1px rgba(0,0,0,.06);
+}
+.reel-strip{display:flex;flex-direction:column}
+.reel-strip.spinning{will-change:transform,filter}
+.reel-item{
+  flex:0 0 var(--item-h);height:var(--item-h);display:flex;align-items:center;justify-content:center;
+  padding:0 20px;text-align:center;font-weight:700;line-height:1.2;
+  font-size:clamp(17px,5.2vw,26px);color:var(--ink);
+}
+.reel-item span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+
+/* ===== Lever ===== */
+.lever{
+  flex:0 0 54px;width:54px;height:128px;position:relative;
+  background:none;border:0;padding:0;cursor:pointer;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+}
+.lever:disabled{cursor:default}
+.lever:focus-visible{outline:2px solid var(--lamp-on);outline-offset:2px;border-radius:12px}
+.lever-base{
+  position:absolute;left:50%;bottom:4px;width:46px;height:30px;transform:translateX(-50%);
+  border-radius:10px 10px 8px 8px;
+  background:linear-gradient(180deg,#85857f,#3c3c3a);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 6px rgba(0,0,0,.5);
+}
+.lever-arm{
+  position:absolute;left:calc(50% - 5px);bottom:26px;width:10px;height:0;
+  transform-origin:50% 0;transform:rotate(-10deg);
+  transition:transform 520ms var(--ease-snap);
+}
+.lever-rod{
+  position:absolute;left:0;bottom:0;width:10px;height:70px;border-radius:5px;
+  background:linear-gradient(90deg,#8d8d8d,#ececec 45%,#868686);
+  box-shadow:0 2px 4px rgba(0,0,0,.4);
+  transition:height 520ms var(--ease-snap);
+}
+.lever-knob{
+  position:absolute;top:-22px;left:50%;width:32px;height:32px;margin-left:-16px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#ff9a8a 0,var(--knob) 42%,#7d1d14 100%);
+  box-shadow:0 4px 6px rgba(0,0,0,.5),inset 0 -2px 4px rgba(0,0,0,.35);
+}
+.lever.is-pulled .lever-arm{transform:rotate(14deg);transition:transform 120ms ease-out}
+.lever.is-pulled .lever-rod{height:34px;transition:height 120ms ease-out}
+
+/* ===== Result bar ===== */
+.result-bar{margin:10px 6px 0;min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.meta{min-height:18px;font-size:13px;color:#D9CFBD;letter-spacing:.06em;text-align:center}
+.actions{min-height:44px;display:flex;align-items:center}
+.map-btn,.retry-btn{
+  display:none;align-items:center;justify-content:center;min-height:44px;padding:0 22px;border-radius:12px;
+  font-size:14px;font-weight:700;letter-spacing:.08em;text-decoration:none;color:#3b3226;border:0;cursor:pointer;
+  background:linear-gradient(180deg,#E3D3B6,var(--sand));
+  box-shadow:0 3px 0 #8f7f66,0 5px 8px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.5);
+  -webkit-tap-highlight-color:transparent;
+}
+.map-btn:active,.retry-btn:active{transform:translateY(3px);box-shadow:0 0 0 #8f7f66,inset 0 2px 4px rgba(0,0,0,.3)}
+.map-btn.show,.retry-btn.show{display:inline-flex}
+
+/* ===== Control panel ===== */
+.panel{flex:0 0 auto;padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+.selects{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+select{
+  -webkit-appearance:none;appearance:none;width:100%;min-width:0;height:46px;padding:0 34px 0 14px;
+  border-radius:12px;border:1px solid #b6a78f;color:var(--ink);font-size:15px;font-weight:600;
+  background-color:#FBF7EF;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' fill='none' stroke='%234A4A48' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat:no-repeat;background-position:right 13px center;
+  box-shadow:inset 0 2px 3px rgba(0,0,0,.12),0 1px 0 #fff;
+  text-overflow:ellipsis;
+}
+select:disabled{opacity:.5}
+select:focus-visible{outline:2px solid var(--clay);outline-offset:1px}
+
+.keys-wrap{margin-top:10px;position:relative}
+.keys-wrap:not(.at-end){-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent)}
+.keys{
+  display:grid;grid-template-rows:repeat(2,44px);grid-auto-flow:column;grid-auto-columns:max-content;gap:8px;
+  overflow-x:auto;overflow-y:hidden;padding:2px 4px 6px;
+  scrollbar-width:none;scroll-snap-type:x proximity;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+}
+.keys::-webkit-scrollbar{display:none}
+.key{
+  position:relative;scroll-snap-align:start;white-space:nowrap;min-height:44px;padding:0 16px 0 30px;
+  border:0;border-radius:11px;font-size:14px;font-weight:700;color:#3d362c;cursor:pointer;
+  background:linear-gradient(180deg,#EFE7D8,#D8CCB6);
+  box-shadow:0 3px 0 #9d8f77,0 5px 7px rgba(60,45,30,.28),inset 0 1px 0 rgba(255,255,255,.7);
+  transition:transform 150ms ease,box-shadow 150ms ease,background 150ms ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.key::before{
+  content:"";position:absolute;left:12px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;
+  background:var(--lamp-off);box-shadow:inset 0 1px 2px rgba(0,0,0,.55);
+  transition:background 150ms ease,box-shadow 150ms ease;
+}
+.key[aria-pressed="true"]{
+  transform:translateY(3px);
+  background:linear-gradient(180deg,#CBBFA9,#D6CAB4);
+  box-shadow:0 0 0 #9d8f77,inset 0 3px 6px rgba(60,45,30,.4);
+}
+.key[aria-pressed="true"]::before{background:var(--lamp-on);box-shadow:0 0 8px 2px rgba(232,176,74,.75),inset 0 -1px 2px rgba(150,90,0,.5)}
+.key:disabled{opacity:.55;cursor:default}
+.key:focus-visible{outline:2px solid var(--clay);outline-offset:2px}
+
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+@media (max-height:600px){
+  :root{--item-h:56px}
+  .topbar{height:32px}
+  .plate{margin-bottom:6px}
+  .result-bar{min-height:64px;margin-top:6px;gap:4px}
+  .cabinet{padding:10px 12px 10px}
+  .panel{padding-top:6px}
+  .keys-wrap{margin-top:6px}
+}
+@media (prefers-reduced-motion:reduce){
+  .lever-arm,.lever-rod,.key,.key::before{transition-duration:1ms}
+  body[data-phase="spinning"] .lamp{animation:none}
+  .reel-frame.shake{animation:flash .3s linear 1}
+  @keyframes flash{50%{box-shadow:inset 0 0 0 3px var(--clay)}}
+}
+</style>
+</head>
+<body data-phase="loading">
+<div class="app">
+  <header class="topbar">
+    <span class="brand">復古美食機</span>
+    <span class="badge" id="badge" hidden>離線快取</span>
+  </header>
+
+  <main class="machine">
+    <div class="cabinet">
+      <div class="plate"><span>GOURMET</span><span class="lamps"><i class="lamp"></i><i class="lamp"></i><i class="lamp"></i></span></div>
+      <div class="reel-row">
+        <div class="reel-frame" id="reelFrame">
+          <div class="reel-window" aria-hidden="true"><div class="reel-strip" id="strip"></div></div>
+        </div>
+        <button type="button" class="lever" id="lever" aria-label="拉下拉桿抽餐廳" disabled>
+          <span class="lever-base"></span>
+          <span class="lever-arm"><span class="lever-rod"><span class="lever-knob"></span></span></span>
+        </button>
+      </div>
+      <div class="result-bar">
+        <div class="meta" id="meta"></div>
+        <div class="actions">
+          <a class="map-btn" id="mapBtn" target="_blank" rel="noopener noreferrer">開啟 Google 地圖</a>
+          <button type="button" class="retry-btn" id="retryBtn">重試</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <section class="panel">
+    <div class="selects">
+      <select id="citySel" aria-label="縣市" disabled><option value="">全部縣市</option></select>
+      <select id="areaSel" aria-label="區域" disabled><option value="">全部區域</option></select>
+    </div>
+    <div class="keys-wrap" id="keysWrap"><div class="keys" id="keys" role="group" aria-label="餐廳種類（可複選）"></div></div>
+  </section>
+</div>
+<div class="sr" id="sr" aria-live="polite" role="status"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= Config ================= */
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTlZJJU7S2ZA5Ivv-2WtaW-bzLWiuUjDux7YQNhfOjmQd_vX5kmKajkhKa6T9102cAmGUERqfdIaiea/pub?gid=447110991&single=true&output=csv";
+const CACHE_KEY = "retro-food-cache-v1";
+const FETCH_TIMEOUT_MS = 8000;
+const MAX_CATEGORY_BUTTONS = 30;
+const SPIN_DURATION_MS = 2500;
+const FILLER_MIN = 10, FILLER_MAX = 15;
+const LOOP_ITERATIONS = 2, LOOP_ITER_MS = 500;
+const DECEL_ITEMS = 4, DECEL_MS = 1200, SNAP_MS = 300;
+const DECIDE_AT_MS = 700;
+const OVERSHOOT = 0.12;
+const EASE_SPIN = 'cubic-bezier(.12,.75,.2,1)';
+const EASE_SNAP = 'cubic-bezier(.34,1.56,.64,1)';
+const PLACEHOLDER_VALUES = new Set(['待確認']);
+
+/* ================= DOM ================= */
+const $ = id => document.getElementById(id);
+const el = {
+  frame:$('reelFrame'), strip:$('strip'), lever:$('lever'), meta:$('meta'),
+  mapBtn:$('mapBtn'), retryBtn:$('retryBtn'), city:$('citySel'), area:$('areaSel'),
+  keys:$('keys'), keysWrap:$('keysWrap'), badge:$('badge'), sr:$('sr'),
+};
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+/* ================= State ================= */
+const state = {
+  phase:'loading', rows:[], source:'network',
+  city:'', area:'', categories:new Set(), categoryList:[],
+  lastKey:null, current:null,
+  runId:0, anims:[], timers:[], winner:null, pool:[],
+};
+
+/* ================= CSV ================= */
+function parseCsv(text){
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const rows = []; let row = [], field = '', inQ = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (inQ){
+      if (c === '"'){ if (text[i+1] === '"'){ field += '"'; i++; } else inQ = false; }
+      else field += c;
+    } else if (c === '"'){
+      if (field === '') inQ = true; else field += c;
+    } else if (c === ','){ row.push(field); field = ''; }
+    else if (c === '\n' || c === '\r'){
+      if (c === '\r' && text[i+1] === '\n') i++;
+      row.push(field); field = ''; rows.push(row); row = [];
+    } else field += c;
+  }
+  if (field !== '' || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(f => f.trim() !== ''));
+}
+const clean = s => (s ?? '').replace(/\s+/g, ' ').trim();
+function toRestaurants(table){
+  if (!table.length) throw new Error('empty table');
+  const head = table[0].map(h => h.trim().toLowerCase());
+  const idx = {}; ['name','city','area','category'].forEach(k => idx[k] = head.indexOf(k));
+  if (idx.name < 0) throw new Error('missing name column');
+  const seen = new Set(), out = [];
+  for (let i = 1; i < table.length; i++){
+    const r = table[i];
+    const get = k => idx[k] < 0 ? '' : clean(r[idx[k]]);
+    const o = { name:get('name'), city:get('city'), area:get('area'), category:get('category') };
+    if (!o.name) continue;
+    if (PLACEHOLDER_VALUES.has(o.city)) o.city = '';
+    if (PLACEHOLDER_VALUES.has(o.area)) o.area = '';
+    const k = keyOf(o);
+    if (seen.has(k)) continue;
+    seen.add(k); out.push(o);
+  }
+  return out;
+}
+const keyOf = r => `${r.name}|${r.city}|${r.area}`;
+function displayName(r){
+  if (r._d) return r._d;
+  let n = r.name.replace(/^[\s\-–—]+/, '');
+  const m = n.search(/[#｜|（(]/);
+  if (m >= 2) n = n.slice(0, m).trim();
+  return (r._d = n || r.name);
+}
+
+/* ================= Data loading + cache ================= */
+function cacheWrite(rows){
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts:Date.now(), rows })); } catch {}
+}
+function cacheRead(){
+  try {
+    const p = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+    if (p && Array.isArray(p.rows) && p.rows.length && typeof p.rows[0].name === 'string') return p.rows;
+  } catch {}
+  return null;
+}
+async function loadData(){
+  let reason = 'network';
+  try {
+    // 不傳 AbortSignal：部分預覽/沙盒環境會用 postMessage 轉送 fetch 參數，signal 無法被複製而報錯
+    let t;
+    const timeout = new Promise((_, rej) => { t = setTimeout(() => rej(new Error('timeout')), FETCH_TIMEOUT_MS); });
+    let text;
+    try {
+      text = await Promise.race([
+        fetch(CSV_URL, { cache:'no-store' }).then(r => {
+          if (!r.ok) throw new Error('http ' + r.status);
+          return r.text();
+        }),
+        timeout,
+      ]);
+    } finally { clearTimeout(t); }
+    let rows;
+    try { rows = toRestaurants(parseCsv(text)); } catch (e){ reason = 'parse'; throw e; }
+    if (!rows.length){ reason = 'empty'; throw new Error('no rows'); }
+    cacheWrite(rows);
+    return { ok:true, rows, source:'network' };
+  } catch (e){
+    console.warn('[load failed]', reason, e);
+    const cached = cacheRead();
+    if (cached) return { ok:true, rows:cached, source:'cache' };
+    return { ok:false, reason, detail:String(e && e.message || e) };
+  }
+}
+
+/* ================= Data audit (console only) ================= */
+const DISTRICTS = {
+  '台北市':['中正區','大同區','中山區','松山區','大安區','萬華區','信義區','士林區','北投區','內湖區','南港區','文山區'],
+  '新北市':['板橋區','三重區','中和區','永和區','新莊區','新店區','土城區','蘆洲區','汐止區','樹林區','鶯歌區','三峽區','淡水區','五股區','泰山區','林口區','八里區','深坑區','石碇區','坪林區','三芝區','石門區','金山區','萬里區','平溪區','雙溪區','貢寮區','瑞芳區','烏來區'],
+  '基隆市':['仁愛區','中正區','信義區','中山區','安樂區','暖暖區','七堵區'],
+};
+function auditData(rows){
+  const bad = [];
+  rows.forEach(r => {
+    const list = DISTRICTS[r.city];
+    if (list && r.area && !list.includes(r.area)){
+      const owner = Object.keys(DISTRICTS).find(c => DISTRICTS[c].includes(r.area) && c !== r.city);
+      bad.push({ name:r.name, city:r.city, area:r.area, 疑似:owner ? '區域屬於 ' + owner : '非正式行政區名稱' });
+    }
+  });
+  if (bad.length){ console.warn(`[audit] ${bad.length} 筆縣市/區域對不上`); console.table(bad); }
+  else console.log('[audit] 縣市/區域皆吻合');
+}
+
+/* ================= Filters / Picker ================= */
+function getPool(){
+  const { city, area, categories, rows } = state;
+  return rows.filter(r =>
+    (!city || r.city === city) &&
+    (!area || r.area === area) &&
+    (categories.size === 0 || categories.has(r.category)));
+}
+const rand = n => Math.floor(Math.random() * n);
+function pick(pool){
+  if (pool.length === 1) return pool[0];
+  const cand = pool.filter(r => keyOf(r) !== state.lastKey);
+  const src = cand.length ? cand : pool;
+  return src[rand(src.length)];
+}
+function sample(arr, k){
+  const a = arr.slice();
+  for (let i = 0; i < k; i++){ const j = i + rand(a.length - i); [a[i], a[j]] = [a[j], a[i]]; }
+  return a.slice(0, k);
+}
+function buildFillers(pool){
+  const n = pool.length;
+  const K = Math.min(FILLER_MAX, Math.max(FILLER_MIN, n));
+  if (n >= K) return sample(pool, K);        // distinct
+  if (n === 1) return Array(K).fill(pool[0]);
+  if (n === 2){ const [a, b] = sample(pool, 2); return Array.from({length:K}, (_, i) => i % 2 ? b : a); }
+  const out = [];
+  for (let i = 0; i < K; i++){
+    const avoid = [out[i-1], i === K - 1 ? out[0] : null].filter(Boolean);
+    const cand = pool.filter(r => !avoid.includes(r));
+    out.push(cand[rand(cand.length)]);
+  }
+  return out;
+}
+function pickOther(list, avoid){
+  const cand = list.filter(r => !avoid.some(a => keyOf(a) === keyOf(r)));
+  return cand.length ? cand[rand(cand.length)] : list[0];
+}
+
+/* ================= Reel rendering ================= */
+function makeItem(text){
+  const d = document.createElement('div'); d.className = 'reel-item';
+  const s = document.createElement('span'); s.textContent = text; d.appendChild(s);
+  return d;
+}
+function setStrip(texts){ el.strip.replaceChildren(...texts.map(makeItem)); }
+function showText(text){ el.strip.getAnimations().forEach(a => a.cancel()); el.strip.style.transform = ''; el.strip.style.filter = ''; setStrip([text]); }
+function srSay(t){ el.sr.textContent = ''; setTimeout(() => { el.sr.textContent = t; }, 30); }
+
+function clearResult(){
+  el.meta.textContent = '';
+  el.mapBtn.classList.remove('show'); el.mapBtn.removeAttribute('href');
+}
+function renderResult(r){
+  el.meta.textContent = [r.city, r.area, r.category].filter(Boolean).join(' · ');
+  const q = encodeURIComponent(`${displayName(r)} ${r.city}${r.area}`.trim());
+  el.mapBtn.href = `https://www.google.com/maps/search/?api=1&query=${q}`;
+  el.mapBtn.classList.add('show');
+}
+
+function applyPhase(){
+  const p = state.phase;
+  document.body.dataset.phase = p;
+  const lock = p === 'loading' || p === 'spinning';
+  const off = lock || p === 'error';
+  el.lever.disabled = off;
+  el.city.disabled = off;
+  el.area.disabled = off || !state.city;
+  el.keys.querySelectorAll('.key').forEach(b => b.disabled = off);
+}
+
+/* ================= Spin ================= */
+function showEmpty(){
+  showText('查無餐廳');
+  state.phase = 'empty'; state.current = null;
+  clearResult(); applyPhase(); srSay('查無餐廳');
+  el.frame.classList.remove('shake'); void el.frame.offsetWidth; el.frame.classList.add('shake');
+  navigator.vibrate?.([30, 40, 30]);
+}
+el.frame.addEventListener('animationend', () => el.frame.classList.remove('shake'));
+
+function finalize(runId){
+  if (runId !== state.runId || state.phase !== 'spinning') return;
+  state.timers.forEach(clearTimeout); state.timers = [];
+  state.anims.forEach(a => { try { a.cancel(); } catch {} }); state.anims = [];
+  if (!state.winner) state.winner = pick(state.pool);
+  const w = state.winner;
+  el.strip.classList.remove('spinning');
+  showText(displayName(w));
+  state.phase = 'result'; state.current = w; state.lastKey = keyOf(w);
+  renderResult(w); applyPhase(); srSay('抽中：' + w.name);
+  navigator.vibrate?.(15);
+}
+
+async function spin(){
+  if (!['idle', 'result', 'empty'].includes(state.phase)) return;
+  const pool = getPool();
+  if (!pool.length){ showEmpty(); return; }
+
+  const runId = ++state.runId;
+  state.phase = 'spinning'; state.pool = pool; state.winner = null;
+  clearResult(); applyPhase();
+
+  if (REDUCED.matches){
+    state.winner = pick(pool);
+    el.strip.classList.add('spinning');
+    finalize(runId);
+    el.strip.animate([{opacity:0},{opacity:1}], {duration:150});
+    return;
+  }
+
+  const H = el.strip.parentElement.clientHeight;
+  const alive = () => runId === state.runId && state.phase === 'spinning';
+  const track = a => (state.anims.push(a), a);
+  const done = a => a.finished.then(() => true, () => false);
+
+  // Phase A: infinite loop (2 laps, linear)
+  const fillers = buildFillers(pool), K = fillers.length;
+  setStrip(fillers.concat(fillers).map(displayName));
+  el.strip.classList.add('spinning');
+  state.timers.push(setTimeout(() => { if (alive() && !state.winner) state.winner = pick(pool); }, DECIDE_AT_MS));
+  state.timers.push(setTimeout(() => finalize(runId), SPIN_DURATION_MS + 400));
+  const aMove = track(el.strip.animate(
+    [{transform:`translateY(${-K*H}px)`}, {transform:'translateY(0px)'}],
+    {duration:LOOP_ITER_MS, iterations:LOOP_ITERATIONS, easing:'linear', fill:'forwards'}));
+  track(el.strip.animate([{filter:'blur(0px)'}, {filter:'blur(4px)'}], {duration:150, easing:'ease-out', fill:'forwards'}));
+  if (!(await done(aMove)) || !alive()) return;
+
+  // Phase A -> B: winner enters the DOM only now, as the last node of the strip
+  if (!state.winner) state.winner = pick(pool);
+  const w = state.winner, m = DECEL_ITEMS;
+  const ghosts = []; let prev = w;
+  for (let i = 0; i < m; i++){
+    const avoid = [prev]; if (i === m - 1) avoid.push(fillers[0]);
+    const g = pickOther(fillers, avoid); ghosts.push(g); prev = g;
+  }
+  const seq = [w, ...ghosts, fillers[0]];       // top -> bottom; view starts on fillers[0]
+  state.anims.forEach(a => a.cancel()); state.anims = [];
+  setStrip(seq.map(displayName));
+
+  // Phase B: decelerate with overshoot, blur fades out
+  const bMove = track(el.strip.animate(
+    [{transform:`translateY(${-(m+1)*H}px)`}, {transform:`translateY(${OVERSHOOT*H}px)`}],
+    {duration:DECEL_MS, easing:EASE_SPIN, fill:'forwards'}));
+  track(el.strip.animate([{filter:'blur(4px)'}, {filter:'blur(0px)'}], {duration:800, easing:'ease-out', fill:'forwards'}));
+  if (!(await done(bMove)) || !alive()) return;
+
+  // Phase C: detent snap-back
+  const cMove = track(el.strip.animate(
+    [{transform:`translateY(${OVERSHOOT*H}px)`}, {transform:'translateY(0px)'}],
+    {duration:SNAP_MS, easing:EASE_SNAP, fill:'forwards'}));
+  if (!(await done(cMove)) || !alive()) return;
+  finalize(runId);
+}
+
+/* ================= Lever ================= */
+let pressing = false;
+const pull = () => { if (el.lever.disabled || pressing) return false; pressing = true; el.lever.classList.add('is-pulled'); navigator.vibrate?.(10); return true; };
+const release = fire => { if (!pressing) return; pressing = false; el.lever.classList.remove('is-pulled'); if (fire) spin(); };
+el.lever.addEventListener('pointerdown', e => { if (pull()) { try { el.lever.setPointerCapture(e.pointerId); } catch {} } });
+el.lever.addEventListener('pointerup', () => release(true));
+el.lever.addEventListener('pointercancel', () => release(false));
+el.lever.addEventListener('click', e => e.preventDefault());
+el.lever.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); if (!e.repeat) pull(); } });
+el.lever.addEventListener('keyup', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); release(true); } });
+
+/* ================= Filter UI ================= */
+function fillSelect(sel, allLabel, values, current){
+  const frag = document.createDocumentFragment();
+  const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; frag.appendChild(o); };
+  add('', allLabel); values.forEach(v => add(v, v));
+  sel.replaceChildren(frag); sel.value = current;
+}
+const uniqSorted = arr => [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+function renderCity(){ fillSelect(el.city, '全部縣市', uniqSorted(state.rows.map(r => r.city)), state.city); }
+function renderArea(){
+  const areas = state.city ? uniqSorted(state.rows.filter(r => r.city === state.city).map(r => r.area)) : [];
+  fillSelect(el.area, '全部區域', areas, state.area);
+  el.area.disabled = !state.city || state.phase === 'loading' || state.phase === 'spinning' || state.phase === 'error';
+}
+el.city.addEventListener('change', () => { state.city = el.city.value; state.area = ''; renderArea(); });
+el.area.addEventListener('change', () => { state.area = el.area.value; });
+
+function buildCategoryList(){
+  const cnt = new Map();
+  state.rows.forEach(r => { if (r.category) cnt.set(r.category, (cnt.get(r.category) || 0) + 1); });
+  state.categoryList = [...cnt.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hant'))
+    .slice(0, MAX_CATEGORY_BUTTONS).map(e => e[0]);
+  state.categories = new Set();
+}
+function renderKeys(){
+  const frag = document.createDocumentFragment();
+  state.categoryList.forEach(c => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'key'; b.textContent = c; b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => {
+      const on = !state.categories.has(c);
+      on ? state.categories.add(c) : state.categories.delete(c);
+      b.setAttribute('aria-pressed', String(on));
+      navigator.vibrate?.(8);
+    });
+    frag.appendChild(b);
+  });
+  el.keys.replaceChildren(frag);
+  el.keys.scrollLeft = 0; updateKeysMask();
+}
+function updateKeysMask(){
+  const k = el.keys;
+  el.keysWrap.classList.toggle('at-end', k.scrollLeft + k.clientWidth >= k.scrollWidth - 4);
+}
+el.keys.addEventListener('scroll', updateKeysMask, { passive:true });
+window.addEventListener('resize', updateKeysMask);
+
+/* ================= Boot ================= */
+async function load(){
+  state.phase = 'loading'; applyPhase();
+  showText('裝載中…'); clearResult();
+  el.retryBtn.classList.remove('show'); el.badge.hidden = true;
+  const res = await loadData();
+  if (res.ok){
+    state.rows = res.rows; state.source = res.source;
+    state.city = ''; state.area = '';
+    auditData(res.rows);
+    buildCategoryList(); renderCity(); renderArea(); renderKeys();
+    el.badge.hidden = res.source !== 'cache';
+    state.phase = 'idle'; showText('？？？'); applyPhase();
+  } else {
+    state.phase = 'error'; showText('載入失敗'); applyPhase();
+    el.meta.textContent = `${res.reason}：${(res.detail || '').slice(0, 60)}`;
+    el.retryBtn.classList.add('show');
+  }
+}
+el.retryBtn.addEventListener('click', load);
+
+/* ================= Self test (console) ================= */
+function selfTest(){
+  const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const t = [
+    eq(parseCsv('a,b\n1,2'), [['a','b'],['1','2']]),
+    eq(parseCsv('a,b\n"x,y",2'), [['a','b'],['x,y','2']]),
+    eq(parseCsv('a,b\n"x\ny",2'), [['a','b'],['x\ny','2']]),
+    eq(parseCsv('a,b\r\n1,2\r\n'), [['a','b'],['1','2']]),
+    eq(parseCsv('\uFEFFa,b\n1,2'), [['a','b'],['1','2']]),
+    eq(parseCsv('a,b\n"he said ""hi""",1'), [['a','b'],['he said "hi"','1']]),
+  ];
+  const fillerOk = [1, 2, 5, 10, 50].every(n => {
+    const pool = Array.from({length:n}, (_, i) => ({ name:'n' + i, city:'', area:'', category:'' }));
+    for (let k = 0; k < 100; k++){
+      const f = buildFillers(pool);
+      if (f.length < FILLER_MIN || f.length > FILLER_MAX) return false;
+      if (n >= 2) for (let i = 0; i < f.length; i++) if (f[i] === f[(i + 1) % f.length]) return false;
+    }
+    return true;
+  });
+  console.log(`[selfTest] csv ${t.filter(Boolean).length}/${t.length}, fillers ${fillerOk ? 'ok' : 'FAIL'}`);
+}
+
+selfTest();
+load();
+})();
+</script>
+</body>
+</html>
