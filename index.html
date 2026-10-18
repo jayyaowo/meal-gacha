@@ -38,12 +38,12 @@ button,select{font-family:inherit}
 .brand{font-size:16px;font-weight:700;letter-spacing:.4em;color:#6a5f50;padding-left:.4em}
 .badge{position:absolute;right:14px;font-size:11px;padding:3px 8px;border-radius:999px;background:var(--sand);color:#4b4132;box-shadow:inset 0 1px 2px rgba(0,0,0,.15)}
 .badge[hidden]{display:none}
-.machine{flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 6px}
+.machine{flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 14px}
 
-/* ===== Machine: outer frame (rim) + dark body + lever pillar ===== */
+/* ===== Machine: outer frame (rim) + dark body ===== */
 .machine-frame{
   width:100%;display:flex;align-items:stretch;
-  padding:9px 3px 9px 9px;border-radius:32px;
+  padding:9px;border-radius:32px;
   background:linear-gradient(145deg,var(--rim-hi),var(--rim) 45%,var(--rim-lo));
   box-shadow:
     inset 0 2px 0 rgba(255,255,255,.5),
@@ -57,7 +57,6 @@ button,select{font-family:inherit}
   background:linear-gradient(180deg,var(--body-hi),var(--body) 22%,var(--body-lo));
   box-shadow:inset 0 2px 6px rgba(0,0,0,.55),inset 0 -1px 0 rgba(255,255,255,.08),0 1px 0 rgba(255,255,255,.35);
 }
-.pillar{flex:0 0 70px;display:flex;align-items:center;justify-content:center}
 
 /* marquee bulbs */
 .marquee{display:flex;justify-content:center;gap:16px;margin:2px 0 11px}
@@ -129,36 +128,28 @@ body[data-phase="spinning"] .bulb:nth-child(5){animation-delay:.6s}
 }
 .reel-item span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
 
-/* ===== Lever (slot cut into the frame, knob travels on an arc) ===== */
-.lever{
-  position:relative;width:70px;height:124px;padding:0;border:0;background:none;cursor:grab;
-  touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+/* ===== START button ===== */
+.start-wrap{
+  margin-top:10px;padding:6px;border-radius:22px;
+  background:rgba(0,0,0,.3);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.1);
 }
-.lever:disabled{cursor:default}
-.lever:focus-visible{outline:2px solid var(--lamp-on);outline-offset:2px;border-radius:24px}
-.lever::before{
-  content:"";position:absolute;inset:0;border-radius:24px;
-  background:linear-gradient(180deg,rgba(0,0,0,.12),rgba(255,255,255,.08));
-  box-shadow:inset 0 2px 5px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.4);
+.start{
+  display:block;width:100%;height:58px;border:0;border-radius:16px;cursor:pointer;
+  font-family:inherit;font-size:22px;font-weight:800;letter-spacing:.38em;padding:0 0 0 .38em;color:#fff;
+  text-shadow:0 1px 0 rgba(0,0,0,.4);
+  background:linear-gradient(180deg,#e0624f,var(--knob) 52%,#9b2a1e);
+  box-shadow:0 5px 0 #6e1a12,0 9px 12px rgba(0,0,0,.45),inset 0 2px 0 rgba(255,255,255,.38),inset 0 -3px 5px rgba(0,0,0,.25);
+  transition:transform 90ms ease-out,box-shadow 90ms ease-out,filter .2s;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
 }
-.lever-slot{position:absolute;inset:0;pointer-events:none}
-.lever-hub{
-  position:absolute;left:-6px;top:51px;width:22px;height:22px;border-radius:50%;z-index:3;pointer-events:none;
-  background:radial-gradient(circle at 35% 30%,#f2f2f2,#9b9b9b 55%,#5e5e5e);
-  box-shadow:0 2px 4px rgba(0,0,0,.5),inset 0 -1px 2px rgba(0,0,0,.4);
+.start:active:not(:disabled){
+  transform:translateY(5px);
+  box-shadow:0 0 0 #6e1a12,0 2px 4px rgba(0,0,0,.4),inset 0 3px 9px rgba(0,0,0,.45);
 }
-.lever-arm{position:absolute;left:5px;top:62px;width:0;height:0;transform-origin:0 0;transform:rotate(-52deg);z-index:2;pointer-events:none}
-.lever-rod{
-  position:absolute;left:0;top:-4px;width:50px;height:8px;border-radius:4px;
-  background:linear-gradient(180deg,#f0f0f0,#a5a5a5 55%,#6e6e6e);
-  box-shadow:0 2px 3px rgba(0,0,0,.45);
-}
-.lever-knob{
-  position:absolute;left:50px;top:0;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;
-  background:radial-gradient(circle at 35% 30%,#ff9d8d 0,var(--knob) 42%,#7d1d14 100%);
-  box-shadow:0 4px 6px rgba(0,0,0,.5),inset 0 -2px 4px rgba(0,0,0,.35);
-  transform:rotate(52deg);
-}
+.start:disabled{cursor:default;filter:saturate(.3) brightness(.78);transform:translateY(3px);
+  box-shadow:0 2px 0 #4a2a26,inset 0 2px 6px rgba(0,0,0,.35)}
+.start:focus-visible{outline:2px solid var(--lamp-on);outline-offset:3px}
 
 /* ===== Result tray ===== */
 .result-bar{
@@ -231,7 +222,7 @@ select:focus-visible{outline:2px solid var(--clay);outline-offset:1px}
   .marquee{margin-bottom:7px}
   .result-bar{min-height:64px;margin-top:6px;gap:4px;padding:5px 8px}
   .cabinet{padding:8px 8px}
-  .panel{padding-top:6px}
+  \1\n  .start{height:50px;font-size:20px}\n  .start-wrap{margin-top:7px}
   .keys-wrap{margin-top:6px}
 }
 @media (prefers-reduced-motion:reduce){
@@ -264,17 +255,7 @@ select:focus-visible{outline:2px solid var(--clay);outline-offset:1px}
             <button type="button" class="retry-btn" id="retryBtn">重試</button>
           </div>
         </div>
-      </div>
-      <div class="pillar">
-        <button type="button" class="lever" id="lever" aria-label="拉下拉桿抽餐廳" disabled>
-          <svg class="lever-slot" viewBox="0 0 70 124" width="70" height="124" aria-hidden="true">
-            <path d="M31.5 19.6A50 50 0 0 1 31.5 104.4" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="26" stroke-linecap="round" transform="translate(0 1.4)"/>
-            <path d="M31.5 19.6A50 50 0 0 1 31.5 104.4" fill="none" stroke="#0c0c0b" stroke-width="22" stroke-linecap="round"/>
-            <path d="M31.5 19.6A50 50 0 0 1 31.5 104.4" fill="none" stroke="rgba(0,0,0,.65)" stroke-width="14" stroke-linecap="round" transform="translate(1.5 0)"/>
-          </svg>
-          <span class="lever-hub" id="leverHub"></span>
-          <span class="lever-arm" id="leverArm"><span class="lever-rod"></span><span class="lever-knob" id="leverKnob"></span></span>
-        </button>
+        <div class="start-wrap"><button type="button" class="start" id="startBtn" aria-label="開始抽餐廳" disabled>START</button></div>
       </div>
     </div>
   </main>
@@ -307,15 +288,13 @@ const OVERSHOOT = 0.12;
 const EASE_SPIN = 'cubic-bezier(.12,.75,.2,1)';
 const EASE_SNAP = 'cubic-bezier(.34,1.56,.64,1)';
 const PLACEHOLDER_VALUES = new Set(['待確認']);
-const LEVER_REST = -52, LEVER_PULL = 52, LEVER_THRESH = 0.8;
 
 /* ================= DOM ================= */
 const $ = id => document.getElementById(id);
 const el = {
-  frame:$('reelFrame'), win:$('reelWin'), strip:$('strip'), lever:$('lever'), meta:$('meta'),
+  frame:$('reelFrame'), win:$('reelWin'), strip:$('strip'), start:$('startBtn'), meta:$('meta'),
   mapBtn:$('mapBtn'), retryBtn:$('retryBtn'), city:$('citySel'), area:$('areaSel'),
   keys:$('keys'), keysWrap:$('keysWrap'), badge:$('badge'), sr:$('sr'),
-  hub:$('leverHub'), arm:$('leverArm'), knob:$('leverKnob'),
 };
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -500,7 +479,7 @@ function applyPhase(){
   document.body.dataset.phase = p;
   const lock = p === 'loading' || p === 'spinning';
   const off = lock || p === 'error';
-  el.lever.disabled = off;
+  el.start.disabled = off;
   el.city.disabled = off;
   el.area.disabled = off || !state.city;
   el.keys.querySelectorAll('.key').forEach(b => b.disabled = off);
@@ -593,89 +572,12 @@ async function spin(){
   finalize(runId);
 }
 
-/* ================= Lever: arc motion, drag or tap ================= */
-const prog = a => (a - LEVER_REST) / (LEVER_PULL - LEVER_REST);
-const kTf = a => `rotate(${-a}deg) scale(${1 + 0.14 * prog(a)})`;
-let leverAngle = LEVER_REST, leverAnims = [], drag = null, armed = false, keyDown = false;
-
-function setAngle(a){
-  leverAngle = a;
-  el.arm.style.transform = `rotate(${a}deg)`;
-  el.knob.style.transform = kTf(a);
-}
-function cancelLeverAnims(){ leverAnims.forEach(x => { try { x.cancel(); } catch {} }); leverAnims = []; }
-function animateAngles(frames, duration, easing){
-  cancelLeverAnims();
-  const mk = (tf) => frames.map(f => {
-    const o = { transform: tf(f.a) };
-    if (f.offset !== undefined) o.offset = f.offset;
-    if (f.easing) o.easing = f.easing;
-    return o;
-  });
-  const opts = { duration: REDUCED.matches ? 1 : duration, easing: easing || 'linear', fill: 'forwards' };
-  const a1 = el.arm.animate(mk(a => `rotate(${a}deg)`), opts);
-  const a2 = el.knob.animate(mk(kTf), opts);
-  leverAnims = [a1, a2];
-  const last = frames[frames.length - 1].a;
-  return Promise.all([a1.finished, a2.finished]).then(() => {
-    if (leverAnims[0] !== a1) return false;      // superseded
-    setAngle(last); cancelLeverAnims(); return true;
-  }, () => false);
-}
-function springBack(){
-  const from = leverAngle;
-  return animateAngles([
-    { a: from, easing: 'ease-in' },
-    { a: LEVER_REST - 9, offset: .42, easing: 'ease-out' },
-    { a: LEVER_REST + 5, offset: .72, easing: 'ease-in-out' },
-    { a: LEVER_REST },
-  ], 650);
-}
-function fire(){
-  spin();                 // starts reel immediately; lever springs back in parallel
-  springBack();
-}
-async function autoPull(){
-  const ok = await animateAngles([{ a: leverAngle }, { a: LEVER_PULL }], 150, 'ease-in');
-  if (ok) { navigator.vibrate?.(14); fire(); }
-}
-function pointerAngle(e){
-  const r = el.hub.getBoundingClientRect();
-  const deg = Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
-  return Math.max(LEVER_REST, Math.min(LEVER_PULL, deg));
-}
-el.lever.addEventListener('pointerdown', e => {
-  if (el.lever.disabled || drag) return;
-  cancelLeverAnims();
-  drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false };
-  armed = false;
-  try { el.lever.setPointerCapture(e.pointerId); } catch {}
+/* ================= START button ================= */
+el.start.addEventListener('click', () => {
+  if (el.start.disabled) return;
+  navigator.vibrate?.(14);
+  spin();
 });
-el.lever.addEventListener('pointermove', e => {
-  if (!drag || e.pointerId !== drag.id) return;
-  if (!drag.moved && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
-  drag.moved = true;
-  setAngle(pointerAngle(e));
-  const p = prog(leverAngle);
-  if (!armed && p >= LEVER_THRESH){ armed = true; navigator.vibrate?.(12); }
-  else if (armed && p < LEVER_THRESH - 0.1) armed = false;
-});
-el.lever.addEventListener('pointerup', e => {
-  if (!drag || e.pointerId !== drag.id) return;
-  const d = drag; drag = null;
-  if (!d.moved) autoPull();
-  else if (prog(leverAngle) >= LEVER_THRESH) { navigator.vibrate?.(14); fire(); }
-  else springBack();
-});
-el.lever.addEventListener('pointercancel', () => { if (!drag) return; drag = null; springBack(); });
-el.lever.addEventListener('click', e => e.preventDefault());
-el.lever.addEventListener('keydown', e => {
-  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); if (!e.repeat && !el.lever.disabled) keyDown = true; }
-});
-el.lever.addEventListener('keyup', e => {
-  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); if (keyDown){ keyDown = false; autoPull(); } }
-});
-setAngle(LEVER_REST);
 
 /* ================= Filter UI ================= */
 function fillSelect(sel, allLabel, values, current){
